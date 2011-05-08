@@ -30,14 +30,14 @@
 ##############################################################################
 
 # MCU_TARGET = atmega168
-# MCU_TARGET = atmega328p
-MCU_TARGET = atmega644p
+MCU_TARGET = atmega328p
+# MCU_TARGET = atmega644p
 # MCU_TARGET = atmega1280
 # MCU_TARGET = atmega2560
 # MCU_TARGET = at90usb1287
 
 # CPU clock rate
-F_CPU = 16000000L
+F_CPU = 20000000L
 # F_CPU = 8000000L
 DEFS = -DF_CPU=$(F_CPU)
 
@@ -65,7 +65,7 @@ PROGPORT = /dev/arduino
 # atmega168
 #PROGBAUD = 19200
 # atmega328p, 644p, 1280
-PROGBAUD = 57600
+PROGBAUD = 115200
 # atmega 2560
 # PROGBAUD = 115200
 
@@ -80,7 +80,7 @@ PROGID = arduino
 
 PROGRAM = soupcup
 
-SOURCES = $(PROGRAM).c analog.c clock.c serial.c sermsg.c sersendf.c timer.c gcode_parse.c
+SOURCES = $(PROGRAM).c analog.c clock.c serial.c timer.c gcode_parse.c move.c ff.c mmc.c machine.c
 
 ARCH = avr-
 CC = $(ARCH)gcc
@@ -90,7 +90,7 @@ OBJCOPY = $(ARCH)objcopy
 OPTIMIZE = -Os -ffunction-sections -finline-functions-called-once -mcall-prologues
 # OPTIMIZE = -O0
 CFLAGS = -g -Wall -Wstrict-prototypes $(OPTIMIZE) -mmcu=$(MCU_TARGET) $(DEFS) -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -save-temps
-LDFLAGS = -Wl,--as-needed -Wl,--gc-sections
+LDFLAGS = -Wl,--as-needed -Wl,--gc-sections -Wl,-u,vfprintf -lprintf_flt
 LIBS = -lm
 LIBDEPS =
 SUBDIRS =

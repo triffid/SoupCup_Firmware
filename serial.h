@@ -27,4 +27,9 @@ void serial_writestr(uint8_t *data);
 void serial_writeblock_P(PGM_P data, int datalen);
 void serial_writestr_P(PGM_P data);
 
+#ifdef	putchar
+	#undef	putchar
+	#define putchar(c) serial_writechar(c)
+#endif
+
 #endif	/* _SERIAL_H */
