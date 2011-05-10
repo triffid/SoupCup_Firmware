@@ -3,7 +3,9 @@
 
 #include	<stdint.h>
 
-#define	MOVEBUFFER_SIZE	4
+#define	MOVEBUFFER_SIZE	2
+
+#include	"config.h"
 
 typedef struct {
 	union {
@@ -23,20 +25,26 @@ typedef struct {
 	uint32_t	z_steps;
 	uint32_t	e_steps;
 
-	uint32_t	x_c;
-	uint32_t	y_c;
-	uint32_t	z_c;
-	uint32_t	e_c;
+	#if defined(BRESENHAM)
+		uint32_t	c;
+		uint32_t	ds;
+		uint32_t	minc;
+	#elif defined(PERAXIS)
+		uint32_t	x_c;
+		uint32_t	y_c;
+		uint32_t	z_c;
+		uint32_t	e_c;
 
-	uint32_t	x_min_c;
-	uint32_t	y_min_c;
-	uint32_t	z_min_c;
-	uint32_t	e_min_c;
+		uint32_t	x_min_c;
+		uint32_t	y_min_c;
+		uint32_t	z_min_c;
+		uint32_t	e_min_c;
 
-	uint32_t	x_decel_steps;
-	uint32_t	y_decel_steps;
-	uint32_t	z_decel_steps;
-	uint32_t	e_decel_steps;
+		uint32_t	x_decel_steps;
+		uint32_t	y_decel_steps;
+		uint32_t	z_decel_steps;
+		uint32_t	e_decel_steps;
+	#endif
 } move;
 
 extern volatile uint8_t mb_head;

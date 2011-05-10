@@ -61,38 +61,23 @@ float y_decel = 100.0;
 float z_decel = 10.0;
 float e_decel = 100.0;
 
-// position vs endstops
+// position vs endstops (master record, f_global calculated from this)
+location s_global = {0, 0, 0, 0};
+// offset
+location s_offset = {0, 0, 0, 0};
+
+// position vs offset (calculated from s_global)
 coord f_global = {0, 0, 0, 0, 60};
 // local vs global offset
 coord f_offset = {0, 0, 0, 0, 0};
-// local position. should always be == (global + offset)
-coord f_current = {0, 0, 0, 0, 60};
 
-location s_global = {0, 0, 0, 0};
-location s_offset = {0, 0, 0, 0};
-location s_current = {0, 0, 0, 0};
 location s_endpoint = {0, 0, 0, 0};
 
-void update_position_i() {
-	// step interrupt updates s_global, update everything else from that
-	s_current.X = s_global.X + s_offset.X;
-	s_current.Y = s_global.Y + s_offset.Y;
-	s_current.Z = s_global.Z + s_offset.Z;
-	s_current.E = s_global.E + s_offset.E;
-}
-
 void update_position() {
-	update_position_i();
-
 	f_global.X = ((float) s_global.X) / x_steps_per_mm;
 	f_global.Y = ((float) s_global.Y) / y_steps_per_mm;
 	f_global.Z = ((float) s_global.Z) / z_steps_per_mm;
 	f_global.E = ((float) s_global.E) / e_steps_per_mm;
-
-	f_current.X = f_global.X + f_offset.X;
-	f_current.Y = f_global.Y + f_offset.Y;
-	f_current.Z = f_global.Z + f_offset.Z;
-	f_current.E = f_global.E + f_offset.E;
 }
 
 uint8_t next_tool;

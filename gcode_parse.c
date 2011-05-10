@@ -42,28 +42,40 @@ void movemath(void) {
 // 	printf_P(PSTR("doing math- distance..."));
 
 	if (seen('X')) {
-		x_steps = labs(lround(words[idx('X')].f * x_steps_per_mm) - s_endpoint.X);
+		if (state_flags & STATE_RELATIVE)
+			x_steps = labs(lround(words[idx('X')].f * x_steps_per_mm));
+		else
+			x_steps = labs(lround(words[idx('X')].f * x_steps_per_mm) - s_endpoint.X);
 // 		s_endpoint.X += x_steps;
 		xd = ((float) x_steps) / x_steps_per_mm;
 		if (x_steps != 0)
 			axis_mask |= AXIS_X;
 	}
 	if (seen('Y')) {
-		y_steps = labs(lround(words[idx('Y')].f * y_steps_per_mm) - s_endpoint.Y);
+		if (state_flags & STATE_RELATIVE)
+			y_steps = labs(lround(words[idx('Y')].f * y_steps_per_mm));
+		else
+			y_steps = labs(lround(words[idx('Y')].f * y_steps_per_mm) - s_endpoint.Y);
 // 		s_endpoint.Y += y_steps;
 		yd = ((float) y_steps) / y_steps_per_mm;
 		if (y_steps != 0)
 			axis_mask |= AXIS_Y;
 	}
 	if (seen('Z')) {
-		z_steps = labs(lround(words[idx('Z')].f * z_steps_per_mm) - s_endpoint.Z);
+		if (state_flags & STATE_RELATIVE)
+			z_steps = labs(lround(words[idx('Z')].f * z_steps_per_mm));
+		else
+			z_steps = labs(lround(words[idx('Z')].f * z_steps_per_mm) - s_endpoint.Z);
 // 		s_endpoint.Z += z_steps;
 		zd = ((float) z_steps) / z_steps_per_mm;
 		if (z_steps != 0)
 			axis_mask |= AXIS_Z;
 	}
 	if (seen('E')) {
-		e_steps = labs(lround(words[idx('E')].f * e_steps_per_mm) - s_endpoint.E);
+		if (state_flags & STATE_RELATIVE)
+			e_steps = labs(lround(words[idx('E')].f * e_steps_per_mm));
+		else
+			e_steps = labs(lround(words[idx('E')].f * e_steps_per_mm) - s_endpoint.E);
 // 		s_endpoint.E += e_steps;
 		ed = ((float) e_steps) / e_steps_per_mm;
 		if (e_steps != 0)
@@ -95,8 +107,8 @@ void movemath(void) {
 	// time = distance / speed
 	if (seen(TIME) == 0) {
 		float f = words[idx('F')].f / 60.0;
-		if (f < 1.0)
-			f = 1.0;
+		if (f < 0.1)
+			f = 0.1;
 		set_f(TIME, words[idx(DISTANCE)].f / f);
 	}
 
@@ -157,7 +169,7 @@ void movemath(void) {
 	// 				printf_P(PSTR("[Accel: %g,%g,%g,%g]"), xa, ya, za, ea);
 
 	if (seen(DECEL_DISTANCE) == 0) {
-		// distance to decel to speed w at deceleration w' = w**2 / 2 / w'
+		// distance to decel from speed w at deceleration w' = w**2 / 2 / w'
 		dd = 0.0;
 		if (amask(X))
 			dd = fmax(dd, square(xs) / 2.0 / x_decel);
@@ -178,7 +190,7 @@ void movemath(void) {
 		if (seen(XC0) == 0)
 			set_i(XC0, lround(((float) F_CPU) * sqrt(4.0 * da / square(xs) / x_steps_per_mm) * 256.0));
 		if (seen(XDS) == 0)
-			set_i(XDS, lround(square(xs) * x_steps_per_mm / 2.0 / dd));
+			set_i(XDS, lround(dd * words[idx(DISTANCE)].f / xd * x_steps_per_mm));
 	}
 
 	if (amask(Y)) {
@@ -219,7 +231,7 @@ void gcode_process(void) {
 		switch(m) {
 			case 114:
 				update_position();
-				printf_P(PSTR(" Global X:%gmm Y:%gmm Z:%gmm E:%gmm"), f_global.X, f_global.Y, f_global.Z, f_global.E);
+				printf_P(PSTR(" X:%gmm Y:%gmm Z:%gmm E:%gmm"), f_global.X + f_offset.X, f_global.Y + f_offset.Y, f_global.Z + f_offset.Z, f_global.E + f_offset.E);
 				printf_P(PSTR(" Steps X:%ld Y:%ld Z:%ld E:%ld"), s_global.X, s_global.Y, s_global.Z, s_global.E);
 				printf_P(PSTR(" Endpoint X:%gmm Y:%gmm Z:%gmm E:%gmm"), ((float) s_endpoint.X) / x_steps_per_mm, ((float) s_endpoint.Y) / y_steps_per_mm, ((float) s_endpoint.Z) / z_steps_per_mm, ((float) s_endpoint.E) / e_steps_per_mm);
 				break;
@@ -243,20 +255,35 @@ void gcode_process(void) {
 		switch(g) {
 			case 1:
 				// G1
-
 				movemath();
-
 				enqueue();
-
-				f_current.X = words[idx('X')].f;
-				f_current.Y = words[idx('Y')].f;
-				f_current.Z = words[idx('Z')].f;
-				f_current.E = words[idx('E')].f;
-
-				f_global.X = f_current.X - f_offset.X;
-				f_global.Y = f_current.Y - f_offset.Y;
-				f_global.Z = f_current.Z - f_offset.Z;
-				f_global.E = f_current.E - f_offset.E;
+				break;
+			case 90:
+				// set absolute coordinates
+				state_flags &= ~STATE_RELATIVE;
+				break;
+			case 91:
+				// set relative coordinates
+				state_flags |= STATE_RELATIVE;
+				break;
+			case 92:
+				// set offset
+				if (seen('X')) {
+					s_offset.X = (words[idx('X')].f * x_steps_per_mm) - s_global.X;
+					f_offset.X = ((float) s_offset.X) / x_steps_per_mm;
+				}
+				if (seen('Y')) {
+					s_offset.Y = (words[idx('Y')].f * y_steps_per_mm) - s_global.Y;
+					f_offset.Y = ((float) s_offset.Y) / y_steps_per_mm;
+				}
+				if (seen('Z')) {
+					s_offset.Z = (words[idx('Z')].f * z_steps_per_mm) - s_global.Z;
+					f_offset.Z = ((float) s_offset.Z) / z_steps_per_mm;
+				}
+				if (seen('E')) {
+					s_offset.E = (words[idx('E')].f * e_steps_per_mm) - s_global.E;
+					f_offset.E = ((float) s_offset.E) / e_steps_per_mm;
+				}
 				break;
 			default:
 				printf_P(PSTR(" Unsupported G-code: %u"), g);
@@ -317,6 +344,8 @@ void gcode_parse_char(uint8_t c) {
 							linebuf_p = p - linebuf;
 							words[idx(c)].u = val.u;
 						}
+						else
+							words[idx(c)].u = 0;
 						break;
 					default:
 // 						printf_P(PSTR("Looking for a float at %u... "), linebuf_p);
@@ -326,6 +355,8 @@ void gcode_parse_char(uint8_t c) {
 							linebuf_p = p - linebuf;
 							words[idx(c)].f = val.f;
 						}
+						else
+							words[idx(c)].f = 0.0;
 						break;
 				}
 				words_mask |= (1L << (idx(c)));
@@ -388,7 +419,7 @@ void gcode_parse_char(uint8_t c) {
 
 // 		putchar('3');
 
-		if (state_flags & STATE_WRITE_SD) {
+// 		if (state_flags & STATE_WRITE_SD) {
 			for (i = 0, checksum = 0; i < 32; i++) {
 				if (words_mask & (1L << i)) {
 					switch (i) {
@@ -408,22 +439,22 @@ void gcode_parse_char(uint8_t c) {
 						case idx(YDS):
 						case idx(ZDS):
 						case idx(EDS):
-	// 						printf_P(PSTR(" %c%lu"), 'A' + i, words[i].i);
-// 							if (state_flags & STATE_WRITE_SD)
+							printf_P(PSTR(" %c%lu"), 'A' + i, words[i].i);
+							if (state_flags & STATE_WRITE_SD)
 								fprintf_P(&mysdcard, PSTR(" %c%lu"), 'A' + i, words[i].i);
 							break;
 						case idx(CHECKSUM):
 	// 						printf_P(PSTR(" *%lu"), words[i].i);
 							break;
 						default:
-	// 						printf_P(PSTR(" %c%f"), 'A' + i, words[i].f);
-// 							if (state_flags & STATE_WRITE_SD)
+							printf_P(PSTR(" %c%f"), 'A' + i, words[i].f);
+							if (state_flags & STATE_WRITE_SD)
 								fprintf_P(&mysdcard, PSTR(" %c%f"), 'A' + i, words[i].f);
 							break;
 					}
 				}
 			}
-		}
+// 		}
 
 // 		putchar('4');
 

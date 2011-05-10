@@ -49,19 +49,20 @@ extern float y_decel;
 extern float z_decel;
 extern float e_decel;
 
-// position vs endstops
-extern coord f_global;
-// local vs global offset
-extern coord f_offset;
-// local position. should always be == (global + offset)
-extern coord f_current;
-
+// position in steps vs endstops. This is the master position record, f_global is calculated from this
 extern location s_global;
+// offset in steps
 extern location s_offset;
-extern location s_current;
+
+// position in mm vs endstops. Calculated from s_global
+extern coord f_global;
+// offset in mm
+extern coord f_offset;
+
+
+// this is where the last move will finish
 extern location s_endpoint;
 
-void update_position_i(void);
 void update_position(void);
 
 extern uint8_t next_tool;

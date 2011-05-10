@@ -24,7 +24,6 @@ void serial_getline() {
 
 		loopstuff();
 	} while (c >= 32);
-	printf_P(PSTR("EOL\n"));
 }
 
 void main(void) __attribute__ ((noreturn));
